@@ -132,15 +132,20 @@ Deno.serve(async (req) => {
   let lastStatus = 0;
   let detail = "";
   for (const model of models) {
+    // Délai court pour le DÉBUT de réponse : un modèle saturé ne fait pas attendre le visiteur
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 9_000);
     try {
       upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
         method: "POST",
         headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
         body: payload,
-        signal: AbortSignal.timeout(20_000),
+        signal: ac.signal,
       });
     } catch {
       upstream = null; lastStatus = 504; continue;
+    } finally {
+      clearTimeout(timer);
     }
     if (upstream.ok && upstream.body) break;
     lastStatus = upstream.status;
