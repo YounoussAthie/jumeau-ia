@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
   const payload = JSON.stringify({
     systemInstruction: { parts: [{ text: SYSTEM }] },
     contents: msgs.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-    generationConfig: { temperature: 0.6, maxOutputTokens: 700 },
+    generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
   });
   let upstream: Response | null = null;
   let lastStatus = 0;
