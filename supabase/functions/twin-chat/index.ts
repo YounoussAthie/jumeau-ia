@@ -137,8 +137,11 @@ Deno.serve(async (req) => {
   }
   if (upstream.status === 429) return json(req, { error: "upstream_rate_limited" }, 429);
   if (!upstream.ok || !upstream.body) {
-    console.log("gemini error", upstream.status);
-    return json(req, { error: "upstream_error" }, 502);
+    // Message d'erreur de Gemini (ne contient ni la clé ni la conversation) : utile au diagnostic
+    let detail = "";
+    try { detail = String((await upstream.json())?.error?.message ?? "").slice(0, 200); } catch { /* */ }
+    console.log("gemini error", upstream.status, detail);
+    return json(req, { error: "upstream_error", status: upstream.status, detail }, 502);
   }
 
   // Flux SSE de Gemini → flux de texte brut pour le navigateur

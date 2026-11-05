@@ -10,7 +10,6 @@
 
   var script = document.currentScript;
   var ENDPOINT = (script && script.dataset.endpoint) || "https://rmwcbnrhhvllwebjkvnr.supabase.co/functions/v1/twin-chat";
-  var APIKEY = "sb_publishable_Z5kz4FZPmLfLJ9WN1E3N2g_vc-RFPzU"; // clé publique (pas un secret)
   var LANG = (script && script.dataset.lang) || ((navigator.language || "fr").toLowerCase().indexOf("fr") === 0 ? "fr" : "en");
   var STORE = "younouss-twin-v1";
 
@@ -210,7 +209,8 @@
     try {
       var res = await fetch(ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", apikey: APIKEY },
+        // Requête « simple » (texte brut, sans en-tête personnalisé) : pas de pré-vérification CORS
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
         body: JSON.stringify({ messages: history.slice(-12) }),
       });
       if (!res.ok || !res.body) {
