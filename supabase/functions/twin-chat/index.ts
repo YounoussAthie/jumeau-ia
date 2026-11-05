@@ -120,28 +120,38 @@ Deno.serve(async (req) => {
   ipHits.set(ip, recent);
   globalCount++;
 
-  const model = Deno.env.get("GEMINI_TWIN_MODEL") || "gemini-3.8-flash";
-  let upstream: Response;
-  try {
-    upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
-      method: "POST",
-      headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents: msgs.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
-        generationConfig: { temperature: 0.6, maxOutputTokens: 700 },
-      }),
-    });
-  } catch {
-    return json(req, { error: "upstream_unreachable" }, 502);
-  }
-  if (upstream.status === 429) return json(req, { error: "upstream_rate_limited" }, 429);
-  if (!upstream.ok || !upstream.body) {
+  // Modèles gratuits essayés dans l'ordre : si l'un est saturé (503) ou au quota (429), on passe au suivant
+  const models = [Deno.env.get("GEMINI_TWIN_MODEL"), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+    .filter((m, i, a): m is string => !!m && a.indexOf(m) === i);
+  const payload = JSON.stringify({
+    systemInstruction: { parts: [{ text: SYSTEM }] },
+    contents: msgs.map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+    generationConfig: { temperature: 0.6, maxOutputTokens: 700 },
+  });
+  let upstream: Response | null = null;
+  let lastStatus = 0;
+  let detail = "";
+  for (const model of models) {
+    try {
+      upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+        method: "POST",
+        headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+        body: payload,
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch {
+      upstream = null; lastStatus = 504; continue;
+    }
+    if (upstream.ok && upstream.body) break;
+    lastStatus = upstream.status;
     // Message d'erreur de Gemini (ne contient ni la clé ni la conversation) : utile au diagnostic
-    let detail = "";
     try { detail = String((await upstream.json())?.error?.message ?? "").slice(0, 200); } catch { /* */ }
-    console.log("gemini error", upstream.status, detail);
-    return json(req, { error: "upstream_error", status: upstream.status, detail }, 502);
+    console.log("gemini error", model, lastStatus, detail);
+    upstream = null;
+    if (![429, 500, 503, 504, 404].includes(lastStatus)) break;
+  }
+  if (!upstream || !upstream.body) {
+    return json(req, { error: lastStatus === 429 ? "upstream_rate_limited" : "upstream_error", status: lastStatus, detail }, lastStatus === 429 ? 429 : 502);
   }
 
   // Flux SSE de Gemini → flux de texte brut pour le navigateur
