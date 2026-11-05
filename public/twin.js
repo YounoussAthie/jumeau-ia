@@ -255,7 +255,10 @@
   function mount() {
     document.body.appendChild(host);
     // Laisse la place au badge « Made in Bolt » (en bas à droite) s'il est présent
-    if (document.querySelector('script[src*="bolt.new/badge"]')) $(".root").style.bottom = "76px";
+    if (document.querySelector('script[src*="bolt.new/badge"]') && window.innerWidth > 520) {
+      $(".root").style.bottom = "76px";
+      panel.style.height = "min(600px, calc(100vh - 170px))";
+    }
     if (script && script.dataset.open === "true") open();
   }
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
