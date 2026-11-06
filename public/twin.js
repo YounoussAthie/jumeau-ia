@@ -72,6 +72,7 @@
     ".panel{position:absolute;right:0;bottom:64px;width:min(390px,calc(100vw - 32px));height:min(600px,calc(100vh - 110px));display:flex;flex-direction:column;",
     "border-radius:22px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(180deg,#101e3d,#0b1630);",
     "box-shadow:0 30px 80px -20px rgba(0,0,0,.6),0 0 60px -20px rgba(79,140,255,.45);transform-origin:bottom right;animation:pop .22s ease-out}",
+    ".panel[hidden]{display:none!important}",
     "@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}",
     ".hd{display:flex;align-items:center;gap:12px;padding:14px 14px 12px 16px;border-bottom:1px solid var(--line);",
     "background:radial-gradient(120% 140% at 0% 0%,rgba(79,140,255,.22),transparent 60%)}",
@@ -250,7 +251,7 @@
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); }
   });
   input.addEventListener("input", function () { input.style.height = "auto"; input.style.height = Math.min(120, input.scrollHeight) + "px"; });
-  panel.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) close(); });
 
   function mount() {
     document.body.appendChild(host);
